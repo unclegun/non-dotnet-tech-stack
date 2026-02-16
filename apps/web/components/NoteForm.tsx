@@ -33,14 +33,26 @@ export default function NoteForm() {
 
   return (
     <div>
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
+      {error && (
+        <div className="alert alert-danger alert-dismissible fade show" role="alert">
+          <strong>Error:</strong> {error}
+          <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Close"></button>
+        </div>
+      )}
+      {success && (
+        <div className="alert alert-success alert-dismissible fade show" role="alert">
+          <i className="bi bi-check-circle-fill me-2"></i>
+          {success}
+          <button type="button" className="btn-close" onClick={() => setSuccess('')} aria-label="Close"></button>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="noteContent">Note Content</label>
+        <div className="mb-3">
+          <label htmlFor="noteContent" className="form-label fw-semibold">Note Content</label>
           <textarea
             id="noteContent"
+            className="form-control form-control-lg"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Enter your note..."
@@ -52,13 +64,21 @@ export default function NoteForm() {
           />
         </div>
         
-        <button type="submit" disabled={loading || !content.trim()}>
+        <button 
+          type="submit" 
+          className="btn btn-primary btn-lg w-100" 
+          disabled={loading || !content.trim()}
+        >
           {loading ? (
             <>
-              <span className="loading"></span> Creating...
+              <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              Creating...
             </>
           ) : (
-            'Create Note'
+            <>
+              <i className="bi bi-plus-circle me-2"></i>
+              Create Note
+            </>
           )}
         </button>
       </form>

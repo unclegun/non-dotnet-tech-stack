@@ -33,15 +33,27 @@ export default function ItemForm() {
 
   return (
     <div>
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
+      {error && (
+        <div className="alert alert-danger alert-dismissible fade show" role="alert">
+          <strong>Error:</strong> {error}
+          <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Close"></button>
+        </div>
+      )}
+      {success && (
+        <div className="alert alert-success alert-dismissible fade show" role="alert">
+          <i className="bi bi-check-circle-fill me-2"></i>
+          {success}
+          <button type="button" className="btn-close" onClick={() => setSuccess('')} aria-label="Close"></button>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="itemName">Item Name</label>
+        <div className="mb-3">
+          <label htmlFor="itemName" className="form-label fw-semibold">Item Name</label>
           <input
             id="itemName"
             type="text"
+            className="form-control form-control-lg"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Enter item name..."
@@ -52,13 +64,21 @@ export default function ItemForm() {
           />
         </div>
         
-        <button type="submit" disabled={loading || !name.trim()}>
+        <button 
+          type="submit" 
+          className="btn btn-primary btn-lg w-100" 
+          disabled={loading || !name.trim()}
+        >
           {loading ? (
             <>
-              <span className="loading"></span> Creating...
+              <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              Creating...
             </>
           ) : (
-            'Create Item'
+            <>
+              <i className="bi bi-plus-circle me-2"></i>
+              Create Item
+            </>
           )}
         </button>
       </form>

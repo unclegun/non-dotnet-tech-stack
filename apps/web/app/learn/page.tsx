@@ -6,13 +6,16 @@ export const metadata = {
 
 export default function LearnPage() {
   return (
-    <main>
-      <div className="card">
-        <h1>📚 Learn the Test Stack</h1>
-        <p>
-          This page explains each technology in our stack and how they work together.
-          Think of this as your guide to understanding modern full-stack development.
-        </p>
+    <main className="container py-5">
+      {/* Hero Section */}
+      <div className="card border-0 shadow-lg mb-5" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+        <div className="card-body text-white p-5">
+          <h1 className="display-4 fw-bold mb-3">📚 Learn the Test Stack</h1>
+          <p className="lead mb-0">
+            Explore each technology in our stack and discover how they work together.
+            Your comprehensive guide to understanding modern full-stack development with TypeScript, React, and Node.js.
+          </p>
+        </div>
       </div>
 
       <TechCard
@@ -182,12 +185,16 @@ const data = CreateItemSchema.parse(request.body);`}</pre>
         </div>
       </TechCard>
 
-      <div className="card">
-        <h2>🔗 How They Connect</h2>
-        <p>Here's how data flows through the entire stack:</p>
-        
-        <div className="diagram">
-          <pre>{`
+      {/* How They Connect */}
+      <section className="mb-5">
+        <div className="card border-0 shadow-sm">
+          <div className="card-header bg-white border-0 pt-4 px-4">
+            <h2 className="h3 mb-2">🔗 How They Connect</h2>
+            <p className="text-muted mb-0">Data flow through the entire stack</p>
+          </div>
+          <div className="card-body">
+            <div className="bg-light rounded p-3">
+              <pre className="mb-0" style={{ fontSize: '0.85rem' }}>{`
 1. User fills form in browser
    └→ React state updates
 
@@ -217,19 +224,26 @@ const data = CreateItemSchema.parse(request.body);`}</pre>
 
 10. React re-renders with new data
     └→ User sees updated list
-          `}</pre>
+              `}</pre>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div className="card">
-        <h2>📦 Monorepo Structure</h2>
-        <p>
-          This project uses <strong>npm workspaces</strong> to manage multiple packages in one repository.
-          This is similar to how large projects organize code into separate but related modules.
-        </p>
-        
-        <div className="diagram">
-          <pre>{`
+      {/* Monorepo Structure */}
+      <section className="mb-5">
+        <div className="card border-0 shadow-sm">
+          <div className="card-header bg-white border-0 pt-4 px-4">
+            <h2 className="h3 mb-2">📦 Monorepo Structure</h2>
+            <p className="text-muted mb-0">Organized with npm workspaces</p>
+          </div>
+          <div className="card-body">
+            <div className="alert alert-info mb-3">
+              This project uses <strong>npm workspaces</strong> to manage multiple packages in one repository.
+              This is similar to how large projects organize code into separate but related modules.
+            </div>
+            <div className="bg-light rounded p-3 mb-3">
+              <pre className="mb-0" style={{ fontSize: '0.85rem' }}>{`
 /
 ├── package.json          # Root workspace config
 ├── apps/
@@ -244,14 +258,18 @@ const data = CreateItemSchema.parse(request.body);`}</pre>
 │       ├── app/         # App router pages
 │       ├── components/
 │       └── lib/
-          `}</pre>
+              `}</pre>
+            </div>
+            <div className="d-flex align-items-start">
+              <span className="badge bg-success me-3 mt-1">✓</span>
+              <p className="mb-0">
+                <strong>Benefits:</strong> Each app has its own dependencies, but they're installed together.
+                You can run both with one command: <code className="text-primary">npm run dev</code>
+              </p>
+            </div>
+          </div>
         </div>
-        
-        <p className="mt-3">
-          Benefits: Each app has its own dependencies, but they're installed together.
-          You can run both with one command: <code>npm run dev</code>
-        </p>
-      </div>
+      </section>
     </main>
   );
 }

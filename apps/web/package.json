@@ -2,6 +2,7 @@
   "name": "@test-stack/web",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,7 +10,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@popperjs/core": "^2.11.8",
     "@test-stack/contracts": "*",
+    "bootstrap": "^5.3.2",
     "next": "^14.2.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
