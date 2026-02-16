@@ -10,10 +10,19 @@ export default function Nav() {
           </Link>
         </li>
         <li>
-          <Link href="/learn">Learn</Link>
+          <Link href="/concepts">Concepts</Link>
         </li>
         <li>
           <Link href="/architecture">Architecture</Link>
+        </li>
+        <li>
+          <Link href="/code-walkthrough">Code Tour</Link>
+        </li>
+        <li>
+          <Link href="/observability">Observability</Link>
+        </li>
+        <li>
+          <Link href="/notes">Notes</Link>
         </li>
         <li style={{ marginLeft: 'auto' }}>
           <a 

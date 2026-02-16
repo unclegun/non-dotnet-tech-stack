@@ -1,20 +1,31 @@
 import Fastify from 'fastify';
 import { config } from 'dotenv';
-import { AppError } from './lib/errors.js';
+import { config as appConfig } from './lib/config.js';
+
+// Plugins
+import requestContextPlugin from './plugins/requestContext.js';
+import timingPlugin from './plugins/timing.js';
+import errorHandlerPlugin from './plugins/errorHandler.js';
+
+// Routes
 import healthRoutes from './routes/health.js';
-import itemsRoutes from './routes/items.js';
+import itemsRoutes from './modules/items/routes.js';
+import notesRoutes from './modules/notes/routes.js';
+
+// Jobs
+import { startHeartbeatJob, stopHeartbeatJob } from './jobs/heartbeat.js';
 
 // Load environment variables
 config();
 
-const PORT = Number(process.env.API_PORT) || 3001;
+const PORT = appConfig.apiPort;
 const HOST = '0.0.0.0'; // Bind to all interfaces for Codespaces
 
 const fastify = Fastify({
   logger: {
-    level: process.env.LOG_LEVEL || 'info',
+    level: appConfig.logLevel,
     transport:
-      process.env.NODE_ENV === 'development'
+      appConfig.nodeEnv === 'development'
         ? {
             target: 'pino-pretty',
             options: {
@@ -36,32 +47,15 @@ fastify.register(import('@fastify/cors'), {
   credentials: true,
 });
 
-// Global error handler
-fastify.setErrorHandler((error, request, reply) => {
-  fastify.log.error(error);
-
-  if (error instanceof AppError) {
-    return reply.status(error.statusCode).send({
-      error: {
-        code: error.code,
-        message: error.message,
-        ...(error instanceof Error && 'errors' in error && { details: (error as any).errors }),
-      },
-    });
-  }
-
-  // Generic error response
-  return reply.status(500).send({
-    error: {
-      code: 'INTERNAL_ERROR',
-      message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
-    },
-  });
-});
+// Register plugins (order matters!)
+fastify.register(requestContextPlugin);
+fastify.register(timingPlugin);
+fastify.register(errorHandlerPlugin);
 
 // Register routes
 fastify.register(healthRoutes);
 fastify.register(itemsRoutes);
+fastify.register(notesRoutes);
 
 // Root route
 fastify.get('/', async (request, reply) => {
@@ -72,20 +66,41 @@ fastify.get('/', async (request, reply) => {
     endpoints: {
       health: '/health',
       items: '/items',
+      notes: '/notes',
     },
   };
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\nReceived SIGINT, shutting down gracefully...');
+  stopHeartbeatJob();
+  await fastify.close();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\nReceived SIGTERM, shutting down gracefully...');
+  stopHeartbeatJob();
+  await fastify.close();
+  process.exit(0);
 });
 
 // Start server
 const start = async () => {
   try {
     await fastify.listen({ port: PORT, host: HOST });
+    
+    // Start background jobs
+    startHeartbeatJob();
+    
     console.log(`
 ╔═══════════════════════════════════════╗
 ║   🚀 Test Stack API is running!      ║
 ║                                       ║
 ║   URL: http://localhost:${PORT}        ║
-║   Env: ${process.env.NODE_ENV || 'development'}                   ║
+║   Env: ${appConfig.nodeEnv}                   ║
+║   Jobs: ${appConfig.jobsEnabled ? 'enabled' : 'disabled'}                  ║
 ╚═══════════════════════════════════════╝
 `);
   } catch (err) {

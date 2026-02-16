@@ -3,8 +3,8 @@
 import { useState, FormEvent } from 'react';
 import { apiClient } from '@/lib/apiClient';
 
-export default function ItemForm() {
-  const [name, setName] = useState('');
+export default function NoteForm() {
+  const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -16,16 +16,16 @@ export default function ItemForm() {
     setLoading(true);
 
     try {
-      await apiClient.createItem({ name });
-      setSuccess('Item created successfully!');
-      setName('');
+      await apiClient.createNote({ content });
+      setSuccess('Note created successfully!');
+      setContent('');
       
-      // Refresh the page to show new item
+      // Refresh the page to show new note
       setTimeout(() => {
         window.location.reload();
       }, 500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create item');
+      setError(err instanceof Error ? err.message : 'Failed to create note');
     } finally {
       setLoading(false);
     }
@@ -38,27 +38,27 @@ export default function ItemForm() {
       
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="itemName">Item Name</label>
-          <input
-            id="itemName"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter item name..."
+          <label htmlFor="noteContent">Note Content</label>
+          <textarea
+            id="noteContent"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Enter your note..."
             disabled={loading}
             required
             minLength={1}
-            maxLength={200}
+            maxLength={1000}
+            rows={4}
           />
         </div>
         
-        <button type="submit" disabled={loading || !name.trim()}>
+        <button type="submit" disabled={loading || !content.trim()}>
           {loading ? (
             <>
               <span className="loading"></span> Creating...
             </>
           ) : (
-            'Create Item'
+            'Create Note'
           )}
         </button>
       </form>

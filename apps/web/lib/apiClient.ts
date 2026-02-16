@@ -1,4 +1,14 @@
-import { ApiError, ApiResponse } from './types';
+import {
+  ItemDto,
+  CreateItemBody,
+  ListItemsQuery,
+  ListItemsResponse,
+  NoteDto,
+  CreateNoteBody,
+  ListNotesQuery,
+  ListNotesResponse,
+  ProblemDetails,
+} from '@test-stack/contracts';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -12,7 +22,7 @@ class ApiClient {
   private async request<T>(
     endpoint: string,
     options?: RequestInit
-  ): Promise<ApiResponse<T>> {
+  ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
 
     try {
@@ -27,8 +37,8 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
-        const error = data as ApiError;
-        throw new Error(error.error.message || 'API request failed');
+        const problem = data as ProblemDetails;
+        throw new Error(problem.detail || problem.title || 'API request failed');
       }
 
       return data;
@@ -40,15 +50,45 @@ class ApiClient {
     }
   }
 
-  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { method: 'GET' });
+  // Items
+  async listItems(query?: Partial<ListItemsQuery>): Promise<ListItemsResponse> {
+    const params = new URLSearchParams();
+    if (query?.page) params.append('page', query.page.toString());
+    if (query?.pageSize) params.append('pageSize', query.pageSize.toString());
+    if (query?.q) params.append('q', query.q);
+
+    const endpoint = `/items${params.toString() ? `?${params.toString()}` : ''}`;
+    return this.request<ListItemsResponse>(endpoint);
   }
 
-  async post<T>(endpoint: string, body: unknown): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
+  async createItem(body: CreateItemBody): Promise<ItemDto> {
+    return this.request<ItemDto>('/items', {
       method: 'POST',
       body: JSON.stringify(body),
     });
+  }
+
+  // Notes
+  async listNotes(query?: Partial<ListNotesQuery>): Promise<ListNotesResponse> {
+    const params = new URLSearchParams();
+    if (query?.page) params.append('page', query.page.toString());
+    if (query?.pageSize) params.append('pageSize', query.pageSize.toString());
+    if (query?.q) params.append('q', query.q);
+
+    const endpoint = `/notes${params.toString() ? `?${params.toString()}` : ''}`;
+    return this.request<ListNotesResponse>(endpoint);
+  }
+
+  async createNote(body: CreateNoteBody): Promise<NoteDto> {
+    return this.request<NoteDto>('/notes', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  // Health check
+  async health(): Promise<{ status: string; timestamp: string }> {
+    return this.request('/health');
   }
 }
 

@@ -1,15 +1,15 @@
 import { apiClient } from '@/lib/apiClient';
-import { ItemDto } from '@test-stack/contracts';
+import { NoteDto } from '@test-stack/contracts';
 
-export default async function ItemList() {
-  let items: ItemDto[] = [];
+export default async function NoteList() {
+  let notes: NoteDto[] = [];
   let error: string | null = null;
 
   try {
-    const response = await apiClient.listItems();
-    items = response.items;
+    const response = await apiClient.listNotes();
+    notes = response.notes;
   } catch (err) {
-    error = err instanceof Error ? err.message : 'Failed to load items';
+    error = err instanceof Error ? err.message : 'Failed to load notes';
   }
 
   if (error) {
@@ -22,21 +22,21 @@ export default async function ItemList() {
     );
   }
 
-  if (items.length === 0) {
+  if (notes.length === 0) {
     return (
       <div className="text-muted text-center" style={{ padding: '2rem' }}>
-        No items yet. Create one above!
+        No notes yet. Create one above!
       </div>
     );
   }
 
   return (
     <ul className="item-list">
-      {items.map((item) => (
-        <li key={item.id}>
-          <span className="item-name">{item.name}</span>
+      {notes.map((note) => (
+        <li key={note.id}>
+          <span className="item-name">{note.content}</span>
           <span className="item-date">
-            {new Date(item.createdAt).toLocaleDateString('en-US', {
+            {new Date(note.createdAt).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
               year: 'numeric',

@@ -5,330 +5,302 @@ export const metadata = {
 export default function ArchitecturePage() {
   return (
     <main>
-      <div className="card">
-        <h1>🏗️ System Architecture</h1>
+      <h1>System Architecture</h1>
+      <p>
+        This page explains the architectural patterns, design decisions, and how components
+        communicate in this full-stack application.
+      </p>
+
+      <section>
+        <h2>High-Level Architecture</h2>
+        <pre>{`
+┌──────────────────────────────────────────────────────────────┐
+│                         BROWSER                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  Next.js App (Port 3000)                               │  │
+│  │  • React Server Components (data fetching)             │  │
+│  │  • Client Components (interactivity)                   │  │
+│  │  • API Client (typed, contract-based)                  │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+                         ↕ HTTP/JSON
+┌──────────────────────────────────────────────────────────────┐
+│              SHARED CONTRACTS (Zod Schemas)                  │
+│  • ItemDto, CreateItemBody, ListItemsQuery                   │
+│  • NoteDto, CreateNoteBody, ListNotesQuery                   │
+│  • ProblemDetails (error format)                             │
+└──────────────────────────────────────────────────────────────┘
+                         ↕ Imported by both sides
+┌──────────────────────────────────────────────────────────────┐
+│                 FASTIFY API (Port 3001)                      │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  Plugins (Middleware)                                  │  │
+│  │  • requestContext → adds traceId                       │  │
+│  │  • timing → measures duration                          │  │
+│  │  • errorHandler → maps to Problem Details             │  │
+│  └────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  Routes (HTTP Layer)                                   │  │
+│  │  • Parse & validate requests                           │  │
+│  │  • Return responses                                    │  │
+│  └────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  Services (Business Logic)                             │  │
+│  │  • Reusable logic                                      │  │
+│  │  • Can be called from routes, jobs, CLI               │  │
+│  └────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  Repositories (Data Access)                            │  │
+│  │  • Prisma queries                                      │  │
+│  │  • Abstracts database                                  │  │
+│  └────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  Background Jobs                                       │  │
+│  │  • Heartbeat job (every 30s)                           │  │
+│  │  • Uses same services/repos                            │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+                         ↕ Prisma Client
+┌──────────────────────────────────────────────────────────────┐
+│                   POSTGRESQL DATABASE                        │
+│  • items (id, name, createdAt)                               │
+│  • notes (id, content, createdAt)                            │
+│  • heartbeats (id, message, createdAt)                       │
+└──────────────────────────────────────────────────────────────┘
+        `}</pre>
+      </section>
+
+      <section>
+        <h2>Request Flow Diagram</h2>
+        <p>How a POST /items request flows through the system:</p>
+        <pre>{`
+1. User submits form
+   ↓
+2. ItemForm.tsx (client) → apiClient.createItem(body)
+   ↓
+3. HTTP POST /items with JSON body
+   ↓
+4. Fastify receives request
+   ↓
+5. requestContext plugin → adds traceId
+   ↓
+6. timing plugin → starts timer
+   ↓
+7. routes.ts → validates body with CreateItemBodySchema
+   ↓
+8. service.ts → business logic (if any)
+   ↓
+9. repo.ts → prisma.item.create()
+   ↓
+10. PostgreSQL → INSERT
+   ↓
+11. Result bubbles back up: DB → repo → service → routes
+   ↓
+12. timing plugin → logs duration with traceId
+   ↓
+13. HTTP 201 response with ItemDto
+   ↓
+14. apiClient receives typed result
+   ↓
+15. UI refreshes
+        `}</pre>
+      </section>
+
+      <section>
+        <h2>Layered Architecture</h2>
         <p>
-          Deep dive into the architectural patterns, design decisions, and how components
-          communicate in this full-stack application.
+          The API uses a three-layer architecture for separation of concerns:
         </p>
-      </div>
-
-      <div className="card">
-        <h2>Overall Architecture</h2>
-        <div className="diagram">
-          <pre>{`
-┌─────────────────────────────────────────────────────────────────┐
-│                         BROWSER                                 │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  React Components (Client/Server)                         │  │
-│  │  • ItemForm (client - interactive)                        │  │
-│  │  • ItemList (server - data fetching)                      │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                            ↕ HTTP/fetch                         │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  Next.js App Router (Port 3000)                           │  │
-│  │  • Server-side rendering                                  │  │
-│  │  • Routing & layouts                                      │  │
-│  │  • Static optimization                                    │  │
-│  └───────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                             ↕ HTTP/JSON
-┌─────────────────────────────────────────────────────────────────┐
-│                    FASTIFY API (Port 3001)                      │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  HTTP Layer                                               │  │
-│  │  • CORS middleware                                        │  │
-│  │  • Error handling                                         │  │
-│  │  • Logging (Pino)                                         │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                            ↓                                    │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  Route Handlers                                           │  │
-│  │  • GET  /health → healthRoutes                            │  │
-│  │  • GET  /items  → itemsRoutes                             │  │
-│  │  • POST /items  → itemsRoutes                             │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                            ↓                                    │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  Validation Layer (Zod)                                   │  │
-│  │  • Schema definition                                      │  │
-│  │  • Runtime validation                                     │  │
-│  │  • Type inference                                         │  │
-│  └───────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                             ↕ Prisma Client
-┌─────────────────────────────────────────────────────────────────┐
-│                    PRISMA ORM                                   │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  Client API                                               │  │
-│  │  • findMany, findOne, create, update, delete              │  │
-│  │  • Type-safe query builder                                │  │
-│  │  • Connection pooling                                     │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                            ↓                                    │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  Query Engine                                             │  │
-│  │  • SQL generation                                         │  │
-│  │  • Result mapping                                         │  │
-│  └───────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                             ↕ SQL/TCP
-┌─────────────────────────────────────────────────────────────────┐
-│                   POSTGRESQL DATABASE                           │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  Tables:                                                  │  │
-│  │  • items (id, name, createdAt)                            │  │
-│  │  • _prisma_migrations (schema versioning)                 │  │
-│  └───────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-          `}</pre>
-        </div>
-      </div>
-
-      <div className="grid grid-2">
-        <div className="card">
-          <h2>Request Lifecycle</h2>
-          <p>Let's trace a POST /items request through the entire system:</p>
-          
-          <h4 className="mt-3">Step-by-Step:</h4>
-          
-          <div className="tech-card">
-            <h4>1. Client Submission</h4>
-            <pre>{`// User clicks submit
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  const response = await fetch(
-    'http://localhost:3001/items',
-    {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json' 
-      },
-      body: JSON.stringify({ name })
-    }
-  );
-};`}</pre>
-          </div>
-
-          <div className="tech-card">
-            <h4>2. Network Transport</h4>
-            <p className="text-muted">
-              Browser serializes JSON and sends HTTP POST request to API server.
-              Next.js is bypassed for direct API calls.
-            </p>
-          </div>
-
-          <div className="tech-card">
-            <h4>3. Fastify Routing</h4>
-            <pre>{`// Fastify matches route
-fastify.post('/items', async (req, reply) => {
-  // Handler executes
-});`}</pre>
-          </div>
-
-          <div className="tech-card">
-            <h4>4. Validation</h4>
-            <pre>{`// Zod validates input
-const schema = z.object({
-  name: z.string().min(1).max(200)
-});
-
-const data = schema.parse(req.body);
-// Throws if invalid`}</pre>
-          </div>
-
-          <div className="tech-card">
-            <h4>5. Database Operation</h4>
-            <pre>{`// Prisma creates record
-const item = await prisma.item.create({
-  data: { name: data.name }
-});
-
-// Generated SQL:
-// INSERT INTO items (id, name, createdAt)
-// VALUES (uuid(), $1, now())`}</pre>
-          </div>
-
-          <div className="tech-card">
-            <h4>6. Response</h4>
-            <pre>{`// Send success response
-return reply.code(201).send({
-  data: item,
-  message: 'Item created'
-});`}</pre>
-          </div>
-        </div>
-
-        <div className="card">
-          <h2>Design Patterns</h2>
-          
-          <div className="tech-card">
-            <h4>Separation of Concerns</h4>
-            <p>Each layer has a single responsibility:</p>
-            <ul style={{ marginLeft: '1.5rem' }}>
-              <li><strong>Routes:</strong> HTTP handling only</li>
-              <li><strong>Validation:</strong> Data validation only</li>
-              <li><strong>Prisma:</strong> Database access only</li>
-            </ul>
-          </div>
-
-          <div className="tech-card">
-            <h4>Dependency Injection</h4>
-            <p>
-              Fastify uses a plugin system similar to DI. The Prisma client is
-              imported where needed, and could be registered as a plugin:
-            </p>
-            <pre>{`// lib/db.ts - Centralized instance
-export const prisma = new PrismaClient();
-
-// routes/items.ts - Imported dependency
-import { prisma } from '../lib/db.js';`}</pre>
-          </div>
-
-          <div className="tech-card">
-            <h4>Repository Pattern (via ORM)</h4>
-            <p>
-              Prisma acts as a repository layer, abstracting SQL:
-            </p>
-            <pre>{`// Instead of raw SQL
-const items = await prisma.item.findMany();
-
-// Prisma generates:
-// SELECT * FROM items;`}</pre>
-          </div>
-
-          <div className="tech-card">
-            <h4>Error Handling</h4>
-            <p>Centralized error handling with custom error types:</p>
-            <pre>{`// Custom error classes
-class ValidationError extends AppError {
-  constructor(message, errors) {
-    super('VALIDATION_ERROR', message, 400);
-  }
-}
-
-// Global error handler
-fastify.setErrorHandler((error, req, reply) => {
-  if (error instanceof AppError) {
-    return reply.status(error.statusCode)
-      .send({ error: { ... } });
-  }
-  // ... handle other errors
-});`}</pre>
-          </div>
-
-          <div className="tech-card">
-            <h4>Type Safety</h4>
-            <p>End-to-end type safety from DB to UI:</p>
-            <pre>{`// 1. Prisma schema defines types
-model Item { ... }
-
-// 2. Generated TypeScript types
-type Item = {
-  id: string;
-  name: string;
-  createdAt: Date;
-}
-
-// 3. Shared types in web app
-export interface Item { ... }
-
-// 4. React components use types
-const [items, setItems] = 
-  useState<Item[]>([]);`}</pre>
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <h2>Configuration & Environment</h2>
-        <p>Environment-based configuration keeps secrets out of code:</p>
         
-        <div className="grid grid-2">
-          <div>
-            <h4>API (.env)</h4>
-            <pre>{`DATABASE_URL="postgresql://..."
-API_PORT=3001
-NODE_ENV=development`}</pre>
-          </div>
-          
-          <div>
-            <h4>Web (.env)</h4>
-            <pre>{`NEXT_PUBLIC_API_URL="http://localhost:3001"`}</pre>
-            <p className="text-muted mt-2">
-              Note: <code>NEXT_PUBLIC_*</code> variables are exposed to the browser.
-              Never put secrets here.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <h2>Deployment Considerations</h2>
-        
-        <div className="tech-card">
-          <h4>Production Checklist</h4>
-          <ul style={{ marginLeft: '1.5rem' }}>
-            <li>Use environment variables for all config</li>
-            <li>Enable CORS only for trusted origins</li>
-            <li>Use connection pooling for database</li>
-            <li>Implement proper logging and monitoring</li>
-            <li>Add rate limiting to API endpoints</li>
-            <li>Use HTTPS in production</li>
-            <li>Run database migrations before deploy</li>
-            <li>Build optimized production bundles</li>
-          </ul>
-        </div>
-
-        <div className="tech-card">
-          <h4>Scaling Strategies</h4>
-          <ul style={{ marginLeft: '1.5rem' }}>
-            <li><strong>Horizontal:</strong> Run multiple API instances behind a load balancer</li>
-            <li><strong>Database:</strong> Use read replicas for read-heavy workloads</li>
-            <li><strong>Caching:</strong> Add Redis for frequently accessed data</li>
-            <li><strong>CDN:</strong> Serve Next.js static assets from CDN</li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="card">
-        <h2>Development Workflow</h2>
-        
-        <div className="diagram">
-          <pre>{`
-Development Process:
-
-1. Make changes to code
-   └→ TypeScript checks types
-   
-2. Save files
-   └→ tsx/Next.js auto-reload
-   
-3. Test in browser
-   └→ See changes immediately
-   
-4. Database changes?
-   └→ Update schema.prisma
-   └→ Run: npm run db:migrate
-   └→ Prisma generates new types
-   
-5. Ready to commit
-   └→ All types are validated
-   └→ No runtime surprises
-          `}</pre>
-        </div>
-      </div>
-
-      <div className="card">
-        <h2>Key Takeaways</h2>
-        <ul style={{ marginLeft: '1.5rem', lineHeight: '2' }}>
-          <li>✅ <strong>Type safety everywhere:</strong> TypeScript + Zod + Prisma = fewer bugs</li>
-          <li>✅ <strong>Clear boundaries:</strong> Each layer has one job and does it well</li>
-          <li>✅ <strong>Modern patterns:</strong> Validation, error handling, async/await</li>
-          <li>✅ <strong>Developer experience:</strong> Hot reload, auto-generated types, clear errors</li>
-          <li>✅ <strong>Production ready:</strong> Logging, error handling, graceful shutdown</li>
+        <h3>Routes Layer (HTTP)</h3>
+        <ul>
+          <li>Handles HTTP concerns: parsing, validation, status codes</li>
+          <li>Thin layer that delegates to services</li>
+          <li>Location: <code>apps/api/src/modules/*/routes.ts</code></li>
         </ul>
-      </div>
+
+        <h3>Service Layer (Business Logic)</h3>
+        <ul>
+          <li>Contains application-specific logic</li>
+          <li>Can be called from routes, background jobs, CLI tools</li>
+          <li>Transforms between DTOs and domain models</li>
+          <li>Location: <code>apps/api/src/modules/*/service.ts</code></li>
+        </ul>
+
+        <h3>Repository Layer (Data Access)</h3>
+        <ul>
+          <li>Encapsulates all database operations</li>
+          <li>Makes testing easier (mock the repo)</li>
+          <li>Abstracts data source (could swap DB, add caching, etc.)</li>
+          <li>Location: <code>apps/api/src/modules/*/repo.ts</code></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Design Patterns & Principles</h2>
+        
+        <h3>Contract-First API Design</h3>
+        <p>
+          Define the API contract (request/response schemas) in a shared package.
+          Both frontend and backend import these contracts, ensuring type safety
+          and consistency.
+        </p>
+
+        <h3>Plugin-Based Middleware</h3>
+        <p>
+          Cross-cutting concerns (logging, tracing, error handling) are implemented
+          as Fastify plugins that run before/after route handlers.
+        </p>
+
+        <h3>Dependency Injection (Lightweight)</h3>
+        <p>
+          Service and repository instances are created once and exported.
+          For more complex apps, consider a DI container.
+        </p>
+
+        <h3>Repository Pattern</h3>
+        <p>
+          Data access is abstracted behind repository interfaces.
+          This makes it easier to test business logic without a database.
+        </p>
+
+        <h3>Problem Details for HTTP APIs</h3>
+        <p>
+          Errors are returned in a consistent format (RFC 7807 inspired).
+          Similar to ASP.NET Core's ProblemDetails.
+        </p>
+      </section>
+
+      <section>
+        <h2>Mapping to Other Ecosystems</h2>
+        <p>
+          If you're coming from another ecosystem, here's how concepts map:
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>This Stack</th>
+              <th>ASP.NET Core</th>
+              <th>Spring Boot</th>
+              <th>Rails</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Fastify</td>
+              <td>ASP.NET Core</td>
+              <td>Spring MVC</td>
+              <td>Rails Server</td>
+            </tr>
+            <tr>
+              <td>Routes</td>
+              <td>Controllers</td>
+              <td>Controllers</td>
+              <td>Controllers</td>
+            </tr>
+            <tr>
+              <td>Services</td>
+              <td>Services</td>
+              <td>Services</td>
+              <td>Services</td>
+            </tr>
+            <tr>
+              <td>Repositories</td>
+              <td>Repositories</td>
+              <td>Repositories</td>
+              <td>Models</td>
+            </tr>
+            <tr>
+              <td>Plugins</td>
+              <td>Middleware</td>
+              <td>Filters/Interceptors</td>
+              <td>Middleware/Concerns</td>
+            </tr>
+            <tr>
+              <td>Zod Schemas</td>
+              <td>Data Annotations</td>
+              <td>JSR-303 Validation</td>
+              <td>ActiveModel Validations</td>
+            </tr>
+            <tr>
+              <td>Prisma</td>
+              <td>Entity Framework</td>
+              <td>JPA/Hibernate</td>
+              <td>ActiveRecord</td>
+            </tr>
+            <tr>
+              <td>ProblemDetails</td>
+              <td>ProblemDetails</td>
+              <td>@ControllerAdvice</td>
+              <td>rescue_from</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Trade-offs & Alternatives</h2>
+
+        <h3>Monolith vs Microservices</h3>
+        <p><strong>This repo:</strong> Monolith (single API server)</p>
+        <ul>
+          <li>✅ Simpler deployment, easier local dev</li>
+          <li>✅ Shared code, transactions across entities</li>
+          <li>⚠️ Harder to scale independently</li>
+        </ul>
+        <p><strong>When to split:</strong> Different scaling needs, team boundaries, independent deployments</p>
+
+        <h3>ORM vs Raw SQL</h3>
+        <p><strong>This repo:</strong> Prisma (ORM)</p>
+        <ul>
+          <li>✅ Type-safe, easy to use, good DX</li>
+          <li>⚠️ Less control over queries</li>
+        </ul>
+        <p><strong>When to use SQL:</strong> Complex joins, performance-critical queries, DB-specific features</p>
+
+        <h3>REST vs GraphQL</h3>
+        <p><strong>This repo:</strong> REST</p>
+        <ul>
+          <li>✅ Simple, well-understood, HTTP-native</li>
+          <li>⚠️ Fixed endpoints, potential over/under-fetching</li>
+        </ul>
+        <p><strong>When GraphQL helps:</strong> Complex data requirements, mobile apps, many clients</p>
+
+        <h3>Server Components vs Client SPA</h3>
+        <p><strong>This repo:</strong> Mix of both (Next.js App Router)</p>
+        <ul>
+          <li>✅ Server Components for data fetching (faster initial load)</li>
+          <li>✅ Client Components for interactivity</li>
+        </ul>
+        <p><strong>Pure SPA:</strong> More client-side logic, slower initial load but smoother transitions</p>
+      </section>
+
+      <section>
+        <h2>What's Not Included (Yet)</h2>
+        <p>Real production apps would also need:</p>
+        <ul>
+          <li>Authentication & authorization (JWT, sessions, OAuth)</li>
+          <li>Rate limiting</li>
+          <li>Caching (Redis)</li>
+          <li>Message queue (BullMQ, RabbitMQ)</li>
+          <li>File uploads (S3)</li>
+          <li>Full-text search (Elasticsearch)</li>
+          <li>Monitoring & alerting (Datadog, New Relic)</li>
+          <li>CI/CD pipeline</li>
+          <li>Database backups & disaster recovery</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Learn More</h2>
+        <p>Explore these pages for deeper dives:</p>
+        <ul>
+          <li><a href="/concepts">Concepts</a> - Individual architectural patterns</li>
+          <li><a href="/code-walkthrough">Code Walkthrough</a> - Guided tour of key files</li>
+          <li><a href="/observability">Observability</a> - See logging and tracing in action</li>
+        </ul>
+      </section>
     </main>
   );
 }
